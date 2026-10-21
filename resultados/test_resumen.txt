@@ -1,0 +1,15 @@
+Conjunto de test: 16 pacientes, 572 cortes (204 con tumor)
+
+Por paciente (media ± desviación, mediana):
+  dice          0.828 ± 0.124   mediana 0.874
+  iou           0.721 ± 0.156   mediana 0.776
+  sensibilidad  0.843 ± 0.190   mediana 0.908
+  precision     0.848 ± 0.077   mediana 0.860
+  Peor paciente: 0.497   Mejor: 0.935
+
+Por corte:
+  Dice medio en cortes con tumor: 0.782
+  Cortes con tumor no detectados: 2.5%
+  Cortes sanos con algo marcado:  11.1%
+
+Dice global (todos los píxeles): 0.818
