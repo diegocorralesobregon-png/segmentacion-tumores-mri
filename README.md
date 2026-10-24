@@ -69,6 +69,20 @@ Azul: acierto. Rojo: tumor sin marcar. Amarillo: marcado de más.
 
 **Falsos positivos.** Marca algo en 41 de los 368 cortes sanos. Solo 10 están junto al inicio o el final del tumor y 12 son manchas de más de 200 píxeles. Aparecen en estructuras que brillan en FLAIR sin ser lesión, como las órbitas y la base del cráneo, y en los cortes más altos.
 
+## Medidas y modelo 3D en la demo
+
+La demo, además de segmentar cada corte, calcula medidas y reconstruye el tumor en 3D.
+
+- **En cada corte:** área en cm², diámetro mayor y diámetro perpendicular en mm (la medida bidimensional que se usa para seguir gliomas) y su producto. Los diámetros se dibujan sobre la imagen.
+- **En el paciente completo:** volumen predicho y volumen del radiólogo en cm³, masa estimada en gramos y Dice del paciente.
+- **Modelo 3D interactivo:** superficie del tumor predicho y del tumor del radiólogo, con los ejes de medida en el corte donde la lesión es mayor. Cada elemento se muestra u oculta con un clic en la leyenda. Solo está disponible con los pacientes de test, porque necesita todos los cortes.
+
+Estas cifras son aproximadas por tres motivos:
+
+- **La escala no está en los datos.** Las imágenes de Kaggle no guardan el tamaño real del píxel ni la distancia entre cortes. Por defecto se usan 0,94 mm por píxel y 5 mm entre cortes, valores típicos de un FLAIR clínico, ajustables en el panel lateral. Como los pacientes tienen entre 20 y 88 cortes, la distancia real cambia de uno a otro, y el volumen es la medida más sensible a ese error.
+- **La masa es una estimación.** Se calcula multiplicando el volumen por 1,04 g/cm³, una densidad aproximada del tejido cerebral.
+- **Se mide la lesión visible en FLAIR,** que incluye tumor y edema, no solo células tumorales.
+
 ## De la primera versión a la segunda
 
 El primer entrenamiento parecía razonable por su métrica (Dice medio por corte de 0,78), pero al desglosarlo resultó ser un modelo que casi no segmentaba. Estos son los datos en validación.
@@ -125,7 +139,7 @@ Para abrir la demo:
 
 ## Estructura
 
-    app.py                    Demo con Streamlit
+    app.py                    Demo con Streamlit: cortes, medidas y modelo 3D
     requirements.txt
     src/
       preparar_datos.py       División por paciente
@@ -139,6 +153,7 @@ Para abrir la demo:
       analisis_errores.py     Análisis de errores
       metodo_clasico.py       Comparación con Otsu
       inferencia.py           Carga del modelo y predicción
+      medidas.py              Diámetros, volumen y masa
       explorar.py             Visualización de un corte
     modelos/                  Modelo entrenado e historial
     resultados/               Métricas y figuras
@@ -149,6 +164,7 @@ Para abrir la demo:
 - Cortes 2D independientes: el modelo no usa la información de los cortes vecinos.
 - Conjunto de test pequeño, de 16 pacientes, con una única división. Las medias tienen una incertidumbre considerable.
 - La normalización se hace corte a corte. En los cortes con muy poco cerebro estira demasiado el contraste, lo que puede explicar parte de los falsos positivos. Normalizar por paciente completo es la mejora más clara.
+- Las medidas en mm, el volumen y la masa dependen de una escala supuesta, porque el dataset no la incluye.
 - No se ha aplicado posprocesado. Eliminar regiones pequeñas reduciría parte de los falsos positivos, pero solo una tercera parte son manchas de menos de 50 píxeles.
 
 ## Referencias
