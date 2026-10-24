@@ -77,6 +77,10 @@ La demo, además de segmentar cada corte, calcula medidas y reconstruye el tumor
 - **En el paciente completo:** volumen predicho y volumen del radiólogo en cm³, masa estimada en gramos y Dice del paciente.
 - **Modelo 3D interactivo:** superficie del tumor predicho y del tumor del radiólogo, con los ejes de medida en el corte donde la lesión es mayor. Cada elemento se muestra u oculta con un clic en la leyenda. Solo está disponible con los pacientes de test, porque necesita todos los cortes.
 
+![Modelo 3D](resultados/demo_3d.png)
+
+*Paciente de test DU_5871: tumor predicho (cian) frente al del radiólogo (rojo), con un Dice de 0,94 en el volumen completo.*
+
 Estas cifras son aproximadas por tres motivos:
 
 - **La escala no está en los datos.** Las imágenes de Kaggle no guardan el tamaño real del píxel ni la distancia entre cortes. Por defecto se usan 0,94 mm por píxel y 5 mm entre cortes, valores típicos de un FLAIR clínico, ajustables en el panel lateral. Como los pacientes tienen entre 20 y 88 cortes, la distancia real cambia de uno a otro, y el volumen es la medida más sensible a ese error.
