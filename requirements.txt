@@ -7,3 +7,5 @@ matplotlib
 tqdm
 scipy
 streamlit
+plotly
+scikit-image

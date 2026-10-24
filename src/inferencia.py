@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 
 from dataset import normalizar
@@ -13,7 +14,15 @@ def cargar_modelo(ruta="modelos/unet_v2.pt"):
 
 def predecir(modelo, imagen):
     """Recibe un corte (256, 256, 3) en 0-255 y devuelve el mapa de probabilidad (256, 256)."""
-    x = torch.from_numpy(imagen).permute(2, 0, 1).float() / 255
-    with torch.no_grad():
-        logits = modelo(normalizar(x).unsqueeze(0))
-    return torch.sigmoid(logits)[0, 0].numpy()
+    return predecir_lote(modelo, [imagen])[0]
+
+
+def predecir_lote(modelo, imagenes, lote=8):
+    """Recibe una lista de cortes (256, 256, 3) y devuelve sus mapas de probabilidad (n, 256, 256)."""
+    salidas = []
+    for i in range(0, len(imagenes), lote):
+        x = torch.from_numpy(np.stack(imagenes[i:i + lote])).permute(0, 3, 1, 2).float() / 255
+        x = torch.stack([normalizar(c) for c in x])
+        with torch.no_grad():
+            salidas.append(torch.sigmoid(modelo(x))[:, 0].numpy())
+    return np.concatenate(salidas)
