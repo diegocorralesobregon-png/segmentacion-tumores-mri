@@ -2,6 +2,8 @@
 
 U-Net entrenada desde cero en PyTorch para delimitar gliomas de bajo grado en cortes de resonancia magnética. En 16 pacientes de test que el modelo no vio nunca, alcanza un **Dice medio por paciente de 0,83 ± 0,12** (mediana 0,87).
 
+**Demo online:** https://segmentacion-tumores-mri.streamlit.app
+
 ![Demo de la aplicación](resultados/demo.png)
 
 *Paciente de test DU_5871, corte 23: Dice de 0,97 frente al contorno del radiólogo.*
@@ -76,6 +78,7 @@ La demo, además de segmentar cada corte, calcula medidas y reconstruye el tumor
 - **En cada corte:** área en cm², diámetro mayor y diámetro perpendicular en mm (la medida bidimensional que se usa para seguir gliomas) y su producto. Los diámetros se dibujan sobre la imagen.
 - **En el paciente completo:** volumen predicho y volumen del radiólogo en cm³, masa estimada en gramos y Dice del paciente.
 - **Modelo 3D interactivo:** superficie del tumor predicho y del tumor del radiólogo, con los ejes de medida en el corte donde la lesión es mayor. Cada elemento se muestra u oculta con un clic en la leyenda. Solo está disponible con los pacientes de test, porque necesita todos los cortes.
+- **Impresión 3D:** el tumor predicho se descarga como archivo STL en milímetros, listo para un programa de laminado.
 
 ![Modelo 3D](resultados/demo_3d.png)
 
@@ -141,6 +144,8 @@ Para abrir la demo:
 
     streamlit run app.py
 
+La demo no necesita el dataset: los 16 pacientes de test van en `demo/` en formato comprimido (unos 53 MB), generados con `python src/exportar_demo.py`. Así puede publicarse tal cual en Streamlit Community Cloud.
+
 ## Estructura
 
     app.py                    Demo con Streamlit: cortes, medidas y modelo 3D
@@ -159,6 +164,8 @@ Para abrir la demo:
       inferencia.py           Carga del modelo y predicción
       medidas.py              Diámetros, volumen y masa
       explorar.py             Visualización de un corte
+      exportar_demo.py        Pacientes de test en .npz para la demo
+    demo/                     Pacientes de test comprimidos que usa la demo
     modelos/                  Modelo entrenado e historial
     resultados/               Métricas y figuras
 

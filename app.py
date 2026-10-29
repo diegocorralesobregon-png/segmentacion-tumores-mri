@@ -4,7 +4,6 @@ from pathlib import Path
 sys.path.insert(0, "src")
 
 import numpy as np
-import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
@@ -17,7 +16,7 @@ from inferencia import cargar_modelo, predecir, predecir_lote
 from medidas import diametros, volumen_cm3, masa_g, DENSIDAD_TEJIDO
 
 RUTA_MODELO = "modelos/unet_v2.pt"
-RUTA_DIVISION = Path("data/division.csv")
+CARPETA_DEMO = Path("demo")  # pacientes de test en .npz (los genera src/exportar_demo.py)
 MM_PIXEL_DEFECTO = 0.94   # campo de visión típico de 240 mm en una matriz de 256
 MM_CORTE_DEFECTO = 5.0    # grosor habitual de un FLAIR axial clínico
 
@@ -31,20 +30,22 @@ def obtener_modelo():
     return cargar_modelo(RUTA_MODELO)
 
 
-@st.cache_data
 def pacientes_de_test():
-    df = pd.read_csv(RUTA_DIVISION)
-    return df[df["conjunto"] == "test"].sort_values(["paciente", "corte"])
+    return sorted(ruta.stem for ruta in CARPETA_DEMO.glob("*.npz"))
+
+
+@st.cache_data(show_spinner=False)
+def datos_paciente(paciente):
+    """Cortes (n, 256, 256, 3), máscaras del radiólogo (n, 256, 256) y número de cada corte."""
+    datos = np.load(CARPETA_DEMO / f"{paciente}.npz")
+    return datos["imagenes"], datos["mascaras"], datos["cortes"]
 
 
 @st.cache_data(show_spinner=False)
 def volumen_paciente(paciente, _modelo):
     """Probabilidades y máscara real de todos los cortes del paciente, de abajo arriba."""
-    cortes = pacientes_de_test()
-    cortes = cortes[cortes["paciente"] == paciente].sort_values("corte")
-    imagenes = [leer_imagen(ruta)[0] for ruta in cortes["imagen"]]
-    reales = np.stack([np.array(Image.open(ruta)) > 0 for ruta in cortes["mascara"]])
-    return predecir_lote(_modelo, imagenes), reales, cortes["corte"].to_numpy()
+    imagenes, reales, numeros = datos_paciente(paciente)
+    return predecir_lote(_modelo, list(imagenes)), reales, numeros
 
 
 def leer_imagen(archivo):
@@ -116,6 +117,18 @@ def superficie(volumen, mm_pixel, mm_corte, nombre, color, opacidad):
     )
 
 
+def a_stl(malla):
+    """Convierte una malla de Plotly en un archivo STL binario (en mm) para imprimirla en 3D."""
+    vertices = np.column_stack([np.asarray(malla.x), np.asarray(malla.y), np.asarray(malla.z)])
+    triangulos = vertices[np.column_stack([np.asarray(malla.i), np.asarray(malla.j), np.asarray(malla.k)])]
+    triangulos = triangulos[:, ::-1]  # el eje y está invertido: se recupera la orientación de las caras
+    normales = np.cross(triangulos[:, 1] - triangulos[:, 0], triangulos[:, 2] - triangulos[:, 0])
+    normales /= np.linalg.norm(normales, axis=1, keepdims=True) + 1e-12
+    registros = np.zeros(len(triangulos), dtype=[("normal", "<f4", 3), ("vertices", "<f4", (3, 3)), ("atributo", "<u2")])
+    registros["normal"], registros["vertices"] = normales, triangulos
+    return b"STL tumor".ljust(80, b" ") + np.uint32(len(triangulos)).tobytes() + registros.tobytes()
+
+
 def ejes_3d(extremos, z, mm_pixel, nombre, longitud):
     (f1, c1), (f2, c2) = extremos
     return go.Scatter3d(
@@ -142,24 +155,20 @@ modelo = obtener_modelo()
 # ---------- Panel lateral ----------
 
 opciones = ["Subir una imagen"]
-if RUTA_DIVISION.exists():
+if pacientes_de_test():
     opciones.insert(0, "Paciente de test")
 origen = st.sidebar.radio("Imagen", opciones)
 
 imagen, real, avisos, paciente, numero = None, None, [], None, None
 if origen == "Paciente de test":
-    df = pacientes_de_test()
-    paciente = st.sidebar.selectbox(
-        "Paciente", sorted(df["paciente"].unique()), format_func=lambda p: p[5:12]
-    )
-    cortes = df[df["paciente"] == paciente]
-    con_mas_tumor = int(cortes.loc[cortes["pixeles_tumor"].idxmax(), "corte"])
+    paciente = st.sidebar.selectbox("Paciente", pacientes_de_test(), format_func=lambda p: p[5:12])
+    imagenes, mascaras, numeros_cortes = datos_paciente(paciente)
+    con_mas_tumor = int(numeros_cortes[mascaras.sum(axis=(1, 2)).argmax()])
     numero = st.sidebar.slider(
-        "Corte", int(cortes["corte"].min()), int(cortes["corte"].max()), con_mas_tumor
+        "Corte", int(numeros_cortes.min()), int(numeros_cortes.max()), con_mas_tumor
     )
-    fila = cortes[cortes["corte"] == numero].iloc[0]
-    imagen, avisos = leer_imagen(fila["imagen"])
-    real = np.array(Image.open(fila["mascara"])) > 0
+    indice = int(np.where(numeros_cortes == numero)[0][0])
+    imagen, real = imagenes[indice], mascaras[indice]
     st.sidebar.caption("Pacientes que el modelo no vio durante el entrenamiento.")
 else:
     archivo = st.sidebar.file_uploader("Corte de resonancia", type=["tif", "tiff", "png", "jpg", "jpeg"])
@@ -300,6 +309,12 @@ with pestana_3d:
             ),
         )
         st.plotly_chart(figura, width="stretch")
+
+    if malla_pred is not None:
+        st.download_button(
+            "Descargar el tumor predicho para imprimir en 3D (STL)", a_stl(malla_pred),
+            file_name=f"tumor_{paciente[5:12]}.stl", mime="model/stl",
+        )
 
     st.caption(
         f"Pulsa un elemento de la leyenda para mostrarlo u ocultarlo; doble clic para dejarlo solo. "
