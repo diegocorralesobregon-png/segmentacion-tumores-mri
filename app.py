@@ -144,15 +144,15 @@ def ejes_3d(extremos, z, mm_pixel, nombre, longitud):
 st.markdown(
     """
     <style>
-    .hero {background: linear-gradient(120deg, #B23A1E 0%, #D9622B 45%, #F2A541 100%);
-           padding: 1.6rem 2rem; border-radius: 18px; color: #FFF8F0; margin-bottom: 1.2rem;}
-    .hero h1 {color: #FFF8F0; margin: 0 0 .3rem 0; font-size: 2.3rem;}
-    .hero .slogan {font-size: 1.25rem; font-style: italic; color: #FFE7C7; margin: 0;}
-    .summary {background: #FCE9D6; border-left: 6px solid #D9622B; border-radius: 10px;
+    .hero {background: linear-gradient(120deg, #14284B 0%, #0B62AE 60%, #3A8FD6 100%);
+           padding: 1.6rem 2rem; border-radius: 18px; color: #FFFFFF; margin-bottom: 1.2rem;}
+    .hero h1 {color: #FFFFFF; margin: 0 0 .3rem 0; font-size: 2.3rem;}
+    .hero .slogan {font-size: 1.25rem; font-style: italic; color: #CFE3F7; margin: 0;}
+    .summary {background: #E8F0F8; border-left: 6px solid #0B62AE; border-radius: 10px;
               padding: 1rem 1.3rem; margin-bottom: .6rem;}
-    div[data-testid="stMetric"] {background: #FFFFFF; border: 1px solid #F3C9A3;
-              border-top: 4px solid #E07B39; border-radius: 12px; padding: .6rem .9rem;}
-    section[data-testid="stSidebar"] img {border-radius: 50%; border: 3px solid #E07B39;}
+    div[data-testid="stMetric"] {background: #FFFFFF; border: 1px solid #C9D8EA;
+              border-top: 4px solid #0B62AE; border-radius: 12px; padding: .6rem .9rem;}
+    section[data-testid="stSidebar"] img {border-radius: 50%; border: 3px solid #0B62AE;}
     </style>
     <div class="hero">
       <h1>Brain Tumour Segmentation on MRI</h1>
