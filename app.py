@@ -141,32 +141,57 @@ def ejes_3d(extremos, z, mm_pixel, nombre, longitud):
 
 # ---------- Cabecera ----------
 
-st.title("Brain Tumour Segmentation on MRI")
 st.markdown(
-    "**Group 08** · Diego Corrales · Blanca Acón · Telmo Careaga · Leire Badiola  \n"
-    "Introduction to Biomedical Engineering · University of Deusto · 2026–2027"
+    """
+    <style>
+    .hero {background: linear-gradient(120deg, #B23A1E 0%, #D9622B 45%, #F2A541 100%);
+           padding: 1.6rem 2rem; border-radius: 18px; color: #FFF8F0; margin-bottom: 1.2rem;}
+    .hero h1 {color: #FFF8F0; margin: 0 0 .3rem 0; font-size: 2.3rem;}
+    .hero .slogan {font-size: 1.25rem; font-style: italic; color: #FFE7C7; margin: 0;}
+    .summary {background: #FCE9D6; border-left: 6px solid #D9622B; border-radius: 10px;
+              padding: 1rem 1.3rem; margin-bottom: .6rem;}
+    div[data-testid="stMetric"] {background: #FFFFFF; border: 1px solid #F3C9A3;
+              border-top: 4px solid #E07B39; border-radius: 12px; padding: .6rem .9rem;}
+    section[data-testid="stSidebar"] img {border-radius: 50%; border: 3px solid #E07B39;}
+    </style>
+    <div class="hero">
+      <h1>Brain Tumour Segmentation on MRI</h1>
+      <p class="slogan">Turning grey MRI slices into a tumour you can measure, rotate and hold.</p>
+    </div>
+    <div class="summary">
+      <b>About the project.</b> Following up gliomas means measuring the tumour by hand on every
+      MRI scan, which is slow and varies between experts. This web tool uses a U-Net neural network
+      to outline the tumour automatically, measures it (diameters, volume and estimated mass) and
+      shows it as an interactive 3D model that can be exported for 3D printing.<br>
+      <b>Objective:</b> to give clinicians fast and reproducible tumour measurements from any
+      browser, without installing software. On 16 patients the model never saw, it reaches a mean
+      Dice of 0.83.
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
-st.markdown(
-    "**About the project.** Following up gliomas means measuring the tumour by hand on every MRI scan, "
-    "which is slow and varies between experts. This web tool uses a U-Net neural network to outline the "
-    "tumour automatically, measures it (diameters, volume and estimated mass) and shows it as an "
-    "interactive 3D model that can be exported for 3D printing.  \n"
-    "**Objective:** to give clinicians fast and reproducible tumour measurements from any browser, "
-    "without installing software. On 16 patients the model never saw, it reaches a mean Dice of 0.83."
-)
-with st.expander("Team and project details"):
-    t1, t2, t3, t4 = st.columns(4)
-    for col, nombre in zip((t1, t2, t3, t4), ("Diego Corrales", "Blanca Acón", "Telmo Careaga", "Leire Badiola")):
-        col.markdown(f"**{nombre}**  \nBiomedical Engineering student  \nUniversity of Deusto")
-    st.markdown(
-        "**Course:** Introduction to Biomedical Engineering, Final Project 2026–2027  \n"
-        "**Supervisors:** Begoña García-Zapirain Soto · Cyrille Kesiku Yetuyetu  \n"
-        "**Data:** LGG Segmentation Dataset (110 patients with lower-grade glioma, The Cancer Genome Atlas)  \n"
-        "**Code:** [github.com/diegocorralesobregon-png/segmentacion-tumores-mri]"
-        "(https://github.com/diegocorralesobregon-png/segmentacion-tumores-mri)"
-    )
 st.caption("Learning project: this is not a diagnostic tool.")
-st.divider()
+
+EQUIPO = [("Diego Corrales", "diego"), ("Blanca Acón", "blanca"),
+          ("Telmo Careaga", "telmo"), ("Leire Badiola", "leire")]
+with st.sidebar.expander("👥 Group 08 · The team", expanded=False):
+    for fila in (EQUIPO[:2], EQUIPO[2:]):
+        cols = st.columns(2)
+        for col, (nombre, foto) in zip(cols, fila):
+            ruta = Path("equipo") / f"{foto}.jpg"
+            if ruta.exists():
+                col.image(str(ruta), width="stretch")
+            col.markdown(f"<div style='text-align:center;font-weight:600;font-size:.85rem;line-height:1.2;margin-bottom:.6rem'>{nombre}</div>",
+                         unsafe_allow_html=True)
+    st.markdown(
+        "Biomedical Engineering students  \n"
+        "**Course:** Introduction to Biomedical Engineering, Final Project 2026–2027  \n"
+        "**University of Deusto**  \n"
+        "**Supervisors:** Begoña García-Zapirain Soto · Cyrille Kesiku Yetuyetu  \n"
+        "**Data:** LGG Segmentation Dataset (110 patients, The Cancer Genome Atlas)  \n"
+        "[Code on GitHub](https://github.com/diegocorralesobregon-png/segmentacion-tumores-mri)"
+    )
+st.sidebar.divider()
 
 if not Path(RUTA_MODELO).exists():
     st.error(f"Model not found at {RUTA_MODELO}.")
