@@ -20,7 +20,7 @@ CARPETA_DEMO = Path("demo")  # pacientes de test en .npz (los genera src/exporta
 MM_PIXEL_DEFECTO = 0.94   # campo de visión típico de 240 mm en una matriz de 256
 MM_CORTE_DEFECTO = 5.0    # grosor habitual de un FLAIR axial clínico
 
-st.set_page_config(page_title="Segmentación de tumores cerebrales", layout="wide")
+st.set_page_config(page_title="Brain tumour segmentation", layout="wide")
 
 
 # ---------- Carga y utilidades ----------
@@ -57,12 +57,12 @@ def leer_imagen(archivo):
         matriz = matriz / matriz.max() * 255
     if matriz.ndim == 2:
         matriz = np.stack([matriz] * 3, axis=-1)
-        avisos.append("La imagen tiene un solo canal y el modelo se entrenó con tres secuencias "
-                      "(precontraste, FLAIR y poscontraste). Se ha repetido el canal, así que el "
-                      "resultado es menos fiable.")
+        avisos.append("The image has a single channel, but the model was trained with three sequences "
+                      "(pre-contrast, FLAIR and post-contrast). The channel has been repeated, so the "
+                      "result is less reliable.")
     matriz = matriz[:, :, :3]
     if matriz.shape[:2] != (256, 256):
-        avisos.append(f"La imagen medía {matriz.shape[1]}×{matriz.shape[0]} y se ha reescalado a 256×256.")
+        avisos.append(f"The image was {matriz.shape[1]}×{matriz.shape[0]} and has been resized to 256×256.")
         matriz = np.array(Image.fromarray(matriz.astype(np.uint8)).resize((256, 256), Image.BILINEAR))
     return matriz.astype(np.uint8), avisos
 
@@ -134,63 +134,84 @@ def ejes_3d(extremos, z, mm_pixel, nombre, longitud):
     return go.Scatter3d(
         x=[c1 * mm_pixel, c2 * mm_pixel], y=[-f1 * mm_pixel, -f2 * mm_pixel], z=[z, z],
         mode="lines", line=dict(color="#f5c400", width=7),
-        name="Ejes de medida", legendgroup="ejes", showlegend=nombre == "mayor",
-        hovertemplate=f"Diámetro {nombre}: {longitud:.1f} mm<extra></extra>",
+        name="Measurement axes", legendgroup="ejes", showlegend=nombre == "mayor",
+        hovertemplate=f"{nombre.capitalize()} diameter: {longitud:.1f} mm<extra></extra>",
     )
 
 
 # ---------- Cabecera ----------
 
-st.title("Segmentación de tumores cerebrales en resonancia magnética")
-st.caption(
-    "U-Net entrenada con gliomas de bajo grado (dataset LGG de TCGA). "
-    "Proyecto de aprendizaje: no es una herramienta de diagnóstico."
+st.title("Brain Tumour Segmentation on MRI")
+st.markdown(
+    "**Group 08** · Diego Corrales · Blanca Acón · Telmo Careaga · Leire Badiola  \n"
+    "Introduction to Biomedical Engineering · University of Deusto · 2026–2027"
 )
+st.markdown(
+    "**About the project.** Following up gliomas means measuring the tumour by hand on every MRI scan, "
+    "which is slow and varies between experts. This web tool uses a U-Net neural network to outline the "
+    "tumour automatically, measures it (diameters, volume and estimated mass) and shows it as an "
+    "interactive 3D model that can be exported for 3D printing.  \n"
+    "**Objective:** to give clinicians fast and reproducible tumour measurements from any browser, "
+    "without installing software. On 16 patients the model never saw, it reaches a mean Dice of 0.83."
+)
+with st.expander("Team and project details"):
+    t1, t2, t3, t4 = st.columns(4)
+    for col, nombre in zip((t1, t2, t3, t4), ("Diego Corrales", "Blanca Acón", "Telmo Careaga", "Leire Badiola")):
+        col.markdown(f"**{nombre}**  \nBiomedical Engineering student  \nUniversity of Deusto")
+    st.markdown(
+        "**Course:** Introduction to Biomedical Engineering, Final Project 2026–2027  \n"
+        "**Supervisors:** Begoña García-Zapirain Soto · Cyrille Kesiku Yetuyetu  \n"
+        "**Data:** LGG Segmentation Dataset (110 patients with lower-grade glioma, The Cancer Genome Atlas)  \n"
+        "**Code:** [github.com/diegocorralesobregon-png/segmentacion-tumores-mri]"
+        "(https://github.com/diegocorralesobregon-png/segmentacion-tumores-mri)"
+    )
+st.caption("Learning project: this is not a diagnostic tool.")
+st.divider()
 
 if not Path(RUTA_MODELO).exists():
-    st.error(f"No encuentro el modelo en {RUTA_MODELO}.")
+    st.error(f"Model not found at {RUTA_MODELO}.")
     st.stop()
 modelo = obtener_modelo()
 
 # ---------- Panel lateral ----------
 
-opciones = ["Subir una imagen"]
+opciones = ["Upload an image"]
 if pacientes_de_test():
-    opciones.insert(0, "Paciente de test")
-origen = st.sidebar.radio("Imagen", opciones)
+    opciones.insert(0, "Test patient")
+origen = st.sidebar.radio("Image", opciones)
 
 imagen, real, avisos, paciente, numero = None, None, [], None, None
-if origen == "Paciente de test":
-    paciente = st.sidebar.selectbox("Paciente", pacientes_de_test(), format_func=lambda p: p[5:12])
+if origen == "Test patient":
+    paciente = st.sidebar.selectbox("Patient", pacientes_de_test(), format_func=lambda p: p[5:12])
     imagenes, mascaras, numeros_cortes = datos_paciente(paciente)
     con_mas_tumor = int(numeros_cortes[mascaras.sum(axis=(1, 2)).argmax()])
     numero = st.sidebar.slider(
-        "Corte", int(numeros_cortes.min()), int(numeros_cortes.max()), con_mas_tumor
+        "Slice", int(numeros_cortes.min()), int(numeros_cortes.max()), con_mas_tumor
     )
     indice = int(np.where(numeros_cortes == numero)[0][0])
     imagen, real = imagenes[indice], mascaras[indice]
-    st.sidebar.caption("Pacientes que el modelo no vio durante el entrenamiento.")
+    st.sidebar.caption("Patients the model never saw during training.")
 else:
-    archivo = st.sidebar.file_uploader("Corte de resonancia", type=["tif", "tiff", "png", "jpg", "jpeg"])
+    archivo = st.sidebar.file_uploader("MRI slice", type=["tif", "tiff", "png", "jpg", "jpeg"])
     if archivo is not None:
         imagen, avisos = leer_imagen(archivo)
 
-umbral = st.sidebar.slider("Umbral de decisión", 0.05, 0.95, 0.50, 0.05)
+umbral = st.sidebar.slider("Decision threshold", 0.05, 0.95, 0.50, 0.05)
 st.sidebar.caption(
-    "Por encima de este valor de probabilidad, un píxel se marca como tumor. "
-    "El modelo se evaluó con 0,50."
+    "Pixels with a probability above this value are marked as tumour. "
+    "The model was evaluated at 0.50."
 )
 
-st.sidebar.markdown("**Escala**")
-mm_pixel = st.sidebar.number_input("Tamaño de píxel (mm)", 0.1, 3.0, MM_PIXEL_DEFECTO, 0.01)
-mm_corte = st.sidebar.number_input("Distancia entre cortes (mm)", 0.5, 10.0, MM_CORTE_DEFECTO, 0.5)
+st.sidebar.markdown("**Scale**")
+mm_pixel = st.sidebar.number_input("Pixel size (mm)", 0.1, 3.0, MM_PIXEL_DEFECTO, 0.01)
+mm_corte = st.sidebar.number_input("Slice spacing (mm)", 0.5, 10.0, MM_CORTE_DEFECTO, 0.5)
 st.sidebar.caption(
-    "Los archivos del dataset no guardan la escala real. Los valores por defecto son típicos "
-    "de un FLAIR clínico, no medidos en estas imágenes: las cifras en mm son aproximadas."
+    "The dataset files do not store the real scale. The default values are typical of a clinical "
+    "FLAIR scan, not measured on these images, so values in mm are approximate."
 )
 
 if imagen is None:
-    st.info("Sube un corte de resonancia desde el panel de la izquierda.")
+    st.info("Upload an MRI slice from the panel on the left.")
     st.stop()
 
 for aviso in avisos:
@@ -203,65 +224,65 @@ prediccion = probabilidad > umbral
 flair = imagen[:, :, 1]
 mayor, perpendicular, ext_mayor, ext_perp = diametros(prediccion, mm_pixel)
 
-pestana_corte, pestana_3d = st.tabs(["Corte", "Modelo 3D"])
+pestana_corte, pestana_3d = st.tabs(["Slice", "3D model"])
 
 # ---------- Pestaña: corte ----------
 
 with pestana_corte:
     area = int(prediccion.sum())
     c1, c2, c3 = st.columns(3)
-    c1.metric("Área marcada", f"{area * mm_pixel ** 2 / 100:.2f} cm²", f"{area} px",
+    c1.metric("Marked area", f"{area * mm_pixel ** 2 / 100:.2f} cm²", f"{area} px",
               delta_color="off", delta_arrow="off")
-    c2.metric("Probabilidad máxima", f"{probabilidad.max():.2f}")
+    c2.metric("Maximum probability", f"{probabilidad.max():.2f}")
     if real is not None:
         if real.any() or prediccion.any():
             dice = 2 * (prediccion & real).sum() / (prediccion.sum() + real.sum())
-            c3.metric("Dice frente al radiólogo", f"{dice:.2f}", f"tumor real: {int(real.sum())} px",
+            c3.metric("Dice vs. radiologist", f"{dice:.2f}", f"real tumour: {int(real.sum())} px",
                       delta_color="off", delta_arrow="off")
         else:
-            c3.metric("Dice frente al radiólogo", "—", "sin tumor y sin marca: correcto",
+            c3.metric("Dice vs. radiologist", "—", "no tumour and nothing marked: correct",
                       delta_color="off", delta_arrow="off")
 
     d1, d2, d3 = st.columns(3)
-    d1.metric("Diámetro mayor", f"{mayor:.1f} mm" if mayor else "—")
-    d2.metric("Diámetro perpendicular", f"{perpendicular:.1f} mm" if perpendicular else "—")
-    d3.metric("Producto de diámetros", f"{mayor * perpendicular / 100:.2f} cm²" if mayor else "—")
+    d1.metric("Longest diameter", f"{mayor:.1f} mm" if mayor else "—")
+    d2.metric("Perpendicular diameter", f"{perpendicular:.1f} mm" if perpendicular else "—")
+    d3.metric("Product of diameters", f"{mayor * perpendicular / 100:.2f} cm²" if mayor else "—")
 
-    mostrar_ejes = st.checkbox("Mostrar los diámetros sobre la imagen", value=True)
+    mostrar_ejes = st.checkbox("Show the diameters on the image", value=True)
     ejes = (ext_mayor, ext_perp) if mostrar_ejes else None
 
     i1, i2, i3 = st.columns(3)
     i1.image(a_gris(flair), caption="FLAIR", width="stretch")
-    leyenda = "Predicción (cian)" + (", radiólogo (rojo)" if real is not None else "")
+    leyenda = "Prediction (cyan)" + (", radiologist (red)" if real is not None else "")
     if mostrar_ejes and mayor:
-        leyenda += " y diámetros (amarillo)"
+        leyenda += " and diameters (yellow)"
     i2.image(superponer(flair, prediccion, real, ejes), caption=leyenda, width="stretch")
-    i3.image(plt.get_cmap("magma")(probabilidad)[:, :, :3], caption="Mapa de probabilidad", width="stretch")
+    i3.image(plt.get_cmap("magma")(probabilidad)[:, :, :3], caption="Probability map", width="stretch")
 
-    with st.expander("Ver las tres secuencias"):
+    with st.expander("Show the three sequences"):
         s1, s2, s3 = st.columns(3)
-        for columna, canal, nombre in zip((s1, s2, s3), range(3), ("Precontraste", "FLAIR", "Poscontraste")):
+        for columna, canal, nombre in zip((s1, s2, s3), range(3), ("Pre-contrast", "FLAIR", "Post-contrast")):
             columna.image(a_gris(imagen[:, :, canal]), caption=nombre, width="stretch")
 
-    with st.expander("Cómo de fiable es"):
+    with st.expander("How reliable is it?"):
         st.markdown(
-            "- En 16 pacientes de test, el Dice medio por paciente es **0,83 ± 0,12** (mediana 0,87).\n"
-            "- Falla más en tumores pequeños (menos de 500 píxeles) y se queda corto en los muy grandes.\n"
-            "- En torno al 11 % de los cortes sanos marca algo, sobre todo en las órbitas, "
-            "la base del cráneo y los cortes más altos.\n"
-            "- Solo se ha entrenado con gliomas de bajo grado y cortes 2D de 256×256.\n"
-            "- La máscara marca la anomalía visible en FLAIR, que incluye tumor y edema."
+            "- On 16 test patients, the mean Dice per patient is **0.83 ± 0.12** (median 0.87).\n"
+            "- It fails more often on small tumours (under 500 pixels) and misses part of very large ones.\n"
+            "- It marks something on about 11% of healthy slices, mostly in the orbits, "
+            "the skull base and the highest slices.\n"
+            "- It was trained only on lower-grade gliomas and 2D slices of 256×256 pixels.\n"
+            "- The mask covers the abnormality visible on FLAIR, which includes tumour and oedema."
         )
 
 # ---------- Pestaña: modelo 3D ----------
 
 with pestana_3d:
     if paciente is None:
-        st.info("El modelo 3D necesita todos los cortes de un paciente. "
-                "Elige «Paciente de test» en el panel de la izquierda.")
+        st.info("The 3D model needs every slice of a patient. "
+                "Choose \"Test patient\" in the panel on the left.")
         st.stop()
 
-    with st.spinner("Prediciendo todos los cortes del paciente..."):
+    with st.spinner("Predicting every slice of the patient..."):
         probs, reales, numeros = volumen_paciente(paciente, modelo)
     pred_vol = probs > umbral
 
@@ -271,14 +292,14 @@ with pestana_3d:
     dice_3d = 2 * (pred_vol & reales).sum() / suma if suma else 1.0
 
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Volumen predicho", f"{vol_pred:.1f} cm³")
-    m2.metric("Masa estimada", f"{masa_g(vol_pred):.1f} g")
-    m3.metric("Volumen del radiólogo", f"{vol_real:.1f} cm³")
-    m4.metric("Dice del paciente", f"{dice_3d:.2f}")
+    m1.metric("Predicted volume", f"{vol_pred:.1f} cm³")
+    m2.metric("Estimated mass", f"{masa_g(vol_pred):.1f} g")
+    m3.metric("Radiologist volume", f"{vol_real:.1f} cm³")
+    m4.metric("Patient Dice", f"{dice_3d:.2f}")
 
     trazas = []
-    malla_pred = superficie(pred_vol, mm_pixel, mm_corte, "Tumor predicho", "#00c8ff", 0.85)
-    malla_real = superficie(reales, mm_pixel, mm_corte, "Tumor del radiólogo", "#ff3b3b", 0.35)
+    malla_pred = superficie(pred_vol, mm_pixel, mm_corte, "Predicted tumour", "#00c8ff", 0.85)
+    malla_real = superficie(reales, mm_pixel, mm_corte, "Radiologist tumour", "#ff3b3b", 0.35)
     trazas += [t for t in (malla_pred, malla_real) if t is not None]
 
     # Ejes de medida en el corte donde la predicción es mayor
@@ -287,16 +308,16 @@ with pestana_3d:
         k = int(np.argmax(areas))
         may, per, e_may, e_per = diametros(pred_vol[k], mm_pixel)
         z = k * mm_corte
-        trazas.append(ejes_3d(e_may, z, mm_pixel, "mayor", may))
+        trazas.append(ejes_3d(e_may, z, mm_pixel, "longest", may))
         if e_per is not None:
             trazas.append(ejes_3d(e_per, z, mm_pixel, "perpendicular", per))
-        texto_ejes = (f"Los ejes amarillos están en el corte {int(numeros[k])}, donde la predicción "
-                      f"es más grande: {may:.1f} × {per:.1f} mm.")
+        texto_ejes = (f"The yellow axes are on slice {int(numeros[k])}, where the prediction "
+                      f"is largest: {may:.1f} × {per:.1f} mm.")
     else:
-        texto_ejes = "Con este umbral la red no marca tumor en ningún corte."
+        texto_ejes = "With this threshold the network marks no tumour on any slice."
 
     if not trazas:
-        st.info("No hay tumor que dibujar con este umbral.")
+        st.info("There is no tumour to draw with this threshold.")
     else:
         figura = go.Figure(trazas)
         figura.update_layout(
@@ -305,22 +326,21 @@ with pestana_3d:
                         orientation="h", y=1.02, x=0),
             scene=dict(
                 aspectmode="data",
-                xaxis_title="mm", yaxis_title="mm", zaxis_title="mm (de abajo arriba)",
+                xaxis_title="mm", yaxis_title="mm", zaxis_title="mm (bottom to top)",
             ),
         )
         st.plotly_chart(figura, width="stretch")
 
     if malla_pred is not None:
         st.download_button(
-            "Descargar el tumor predicho para imprimir en 3D (STL)", a_stl(malla_pred),
+            "Download the predicted tumour for 3D printing (STL)", a_stl(malla_pred),
             file_name=f"tumor_{paciente[5:12]}.stl", mime="model/stl",
         )
 
     st.caption(
-        f"Pulsa un elemento de la leyenda para mostrarlo u ocultarlo; doble clic para dejarlo solo. "
-        f"Arrastra para girar y usa la rueda para acercar. {texto_ejes} "
-        f"La masa es el volumen multiplicado por {DENSIDAD_TEJIDO} g/cm³, una densidad aproximada "
-        f"del tejido cerebral. Este paciente tiene {len(numeros)} cortes: con la distancia entre "
-        f"cortes por defecto ({MM_CORTE_DEFECTO} mm) el volumen puede estar muy desviado si el "
-        f"estudio original tenía cortes más finos."
+        f"Click a legend item to show or hide it; double-click to show it alone. "
+        f"Drag to rotate and use the mouse wheel to zoom. {texto_ejes} "
+        f"The mass is the volume multiplied by {DENSIDAD_TEJIDO} g/cm³, an approximate density "
+        f"of brain tissue. This patient has {len(numeros)} slices: with the default slice spacing "
+        f"({MM_CORTE_DEFECTO} mm) the volume may be far off if the original scan had thinner slices."
     )
